@@ -1,0 +1,33 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [ develop ]
+  workflow_dispatch: # 수동 배포 트리거
+    inputs:
+      triggerReason:
+        description: "Why are you manually deploying?"
+        required: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.EC2_KEY }}
+
+      - name: Deploy via SSH
+        run: |
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+            cd /home/ubuntu/judge_server || git clone https://github.com/YOUR_ID/YOUR_REPO.git judge_server && cd judge_server
+            git pull origin develop
+            docker stop judge-server || true && docker rm judge-server || true
+            docker build -t judge-server .
+            docker run -d -p 8000:8000 --name judge-server judge-server
+          EOF
