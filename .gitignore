@@ -1,0 +1,5 @@
+# Python general
+*.py[cod]
+__pycache__/
+*.pyo
+*.pyd
