@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+
+from subprocess import check_output
+import sys
+from typing import List
+
+# Commit message template components
+prefix_content: str = '''
+- 
+
+'''
+guide: str = '''
+# ===== Commit Types =====
+# bugfix: fix bugs
+# chore: modify the cmake or config files
+# docs: update the readme or comments
+# feat: add new features
+# test: add test codes
+# refactor: refactor codes
+
+# ===== Commit Contents =====
+# Describe a detailed description.
+
+'''
+branch_types: dict = {'b': 'bugfix', 'c': 'chore', 'd': 'docs', 'f': 'feat', 't': 'test', 'r': 'refactor'}
+
+
+def branch_check() -> str:
+    branches: List[str] = check_output('git branch', shell=True).decode().splitlines()
+    current_branch_line = next((b for b in branches if b.strip().startswith('*')), None)
+
+    if not current_branch_line:
+        raise RuntimeError("현재 브랜치를 찾을 수 없습니다. Git 저장소인지 확인하세요.")
+
+    branch = current_branch_line.replace('*', '').strip()
+
+    print(f'Checking branch: {branch}')
+
+    # 브랜치 이름이 "a/b/c/d" 형식인지 확인
+    if not branch.count('/') >= 3:
+        raise NameError('***** CHECK YOUR BRANCH *****\n'
+                        'If branch name is specified as "devel" or "stable", make branch in GitLab "/branches/new".')
+
+    branch_type, team, branch_title, author = branch.split('/')
+
+    if branch_type not in branch_types:
+        raise NameError('***** CHECK YOUR BRANCH TYPE *****')
+    if 'fe' not in team and 'be' not in team and 'ps' not in team:
+        raise NameError('***** CHECK YOUR BRANCH TEAM *****')
+    if len(branch_title) < 3:
+        raise NameError('***** CHECK YOUR BRANCH DESCRIPTION *****')
+    if len(author) <= 4:
+        raise NameError('***** CHECK YOUR BRANCH AUTHOR *****')
+
+    prefix = '[' + branch_types.get(branch_type) + ']' + prefix_content
+    return prefix
+
+
+def main(args: List[str]) -> None:
+    commit_message_file = args[1]
+
+    # 기본적으로 commit_type은 없음
+    commit_type = args[2] if len(args) > 2 else ''
+
+    try:
+        prefix = branch_check()
+    except Exception as e:
+        print(f"🚨 커밋 메시지 템플릿 생성 중 오류: {e}")
+        prefix = prefix_content  # fallback only to content
+
+    with open(commit_message_file, 'r', encoding='utf-8') as f:
+        pre_contents = f.read()
+
+    with open(commit_message_file, 'w', encoding='utf-8') as f:
+        f.write(f'{prefix}')
+        f.write(f'{guide}')
+        f.write(pre_contents)
+
+
+if __name__ == '__main__':
+    main(sys.argv)
