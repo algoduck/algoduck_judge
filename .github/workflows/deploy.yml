@@ -25,7 +25,7 @@ jobs:
       - name: Deploy via SSH
         run: |
           ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-            cd /home/ubuntu/algoduck_judge || git clone https://github.com/jwelyl/algodcuk_judge.git algoduck_judge && cd algoduck_judge
+            cd /home/ubuntu/algoduck_judge || git clone https://github.com/jwelyl/algoduck_judge.git algoduck_judge && cd algoduck_judge
             git pull origin develop
             docker stop judge-server || true && docker rm judge-server || true
             docker build -t judge-server .
