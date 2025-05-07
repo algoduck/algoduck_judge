@@ -5,10 +5,16 @@ import resource
 import shutil
 import subprocess
 import uuid
+import logging
 from app.models import SubmissionRequest, SubmissionResponse
 
 def judge_submission(req : SubmissionRequest) -> SubmissionResponse:
+    logger = logging.getLogger(__name__)
+
+    logger.info(f"Start judging: problemId={req.problemId}, memberId={req.memberId}")
+
     if req.language != 1:  # Java만 지원
+        logger.exception("Java 언어만 채점 지원")
         raise HTTPException(status_code=400, detail="Only Java (language=1) is supported")
 
     # 환경변수에서 경로를 불러와 Path 객체로 사용
@@ -16,6 +22,9 @@ def judge_submission(req : SubmissionRequest) -> SubmissionResponse:
     problem_dir = TESTCASE_BASE_PATH / f"prob_{req.problemId:05d}"
     input_files = sorted(problem_dir.glob("input*"))
     output_files = sorted(problem_dir.glob("output*"))
+
+    logger.info(f"input_files: {input_files}")
+    logger.info(f"output_files: {output_files}")
 
     if not input_files or not output_files or len(input_files) != len(output_files):
         raise HTTPException(status_code=500, detail="Invalid or missing testcases")
@@ -25,11 +34,14 @@ def judge_submission(req : SubmissionRequest) -> SubmissionResponse:
 
     try:
         # 1. 코드 저장
+
+        logger.info(f"코드 저장")
         java_file = temp_dir / "Main.java"
         with open(java_file, "w") as f:
             f.write(req.sourceCode)
 
         # 2. 컴파일
+        logger.info(f"Compiling Java file at {java_file}")
         compile_cmd = ["javac", str(java_file)]
         compile_proc = subprocess.run(compile_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if compile_proc.returncode != 0:
@@ -42,6 +54,7 @@ def judge_submission(req : SubmissionRequest) -> SubmissionResponse:
 
         # 3. 테스트케이스별 실행
         for input_path, output_path in zip(input_files, output_files):
+            logger.info(f"Running test case {input_path.name}")
             with open(input_path, "r") as fin, open(output_path, "r") as fout:
                 input_data = fin.read()
                 expected_output = fout.read().strip()
@@ -81,6 +94,7 @@ def judge_submission(req : SubmissionRequest) -> SubmissionResponse:
                 )
 
         # 4. 모든 테스트케이스 통과
+        logger.info("All test cases passed successfully")
         return SubmissionResponse(result="AC", message="Accepted", stdout="", stderr="")
 
     finally:
