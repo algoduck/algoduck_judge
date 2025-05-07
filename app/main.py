@@ -1,11 +1,11 @@
 from app.judge_core import judge_submission
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from app.models import SubmissionRequest, SubmissionResponse
-from pathlib import Path
+from dotenv import load_dotenv
+import logging
 
-from dotenv import load_dotenv # type: ignore
+load_dotenv()
 
-load_dotenv()  # .env 파일 로딩
 app = FastAPI()
 
 @app.get("/health")

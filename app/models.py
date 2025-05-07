@@ -5,7 +5,7 @@ class SubmissionRequest(BaseModel):
     memberId: int
     language: int
     version: int
-    timeLimitation: int
+    timeLimitation : int
     memoryLimitation: int
     sourceCode: str
 
