@@ -20,9 +20,10 @@ def judge_submission(req : SubmissionRequest) -> SubmissionResponse:
     # 환경변수에서 경로를 불러와 Path 객체로 사용
     TESTCASE_BASE_PATH = Path(os.getenv("TESTCASE_BASE_PATH", "/default/path"))
     problem_dir = TESTCASE_BASE_PATH / f"prob_{req.problemId:05d}"
-    input_files = sorted(problem_dir.glob("input*"))
-    output_files = sorted(problem_dir.glob("output*"))
+    input_files = sorted(problem_dir.glob("input*"), key=sort_key)
+    output_files = sorted(problem_dir.glob("output*"), key=sort_key)
 
+    logger.info(f"Number of inputs: {len(input_files)}, outputs: {len(output_files)}")
     logger.info(f"input_files: {input_files}")
     logger.info(f"output_files: {output_files}")
 
@@ -99,3 +100,6 @@ def judge_submission(req : SubmissionRequest) -> SubmissionResponse:
 
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
+
+def sort_key(path):
+    return int(path.stem.lstrip('input').lstrip('output'))
