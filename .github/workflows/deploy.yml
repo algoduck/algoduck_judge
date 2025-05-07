@@ -3,7 +3,7 @@ name: Deploy to EC2
 on:
   push:
     branches: [ develop ]
-  workflow_dispatch: # 수동 배포 트리거
+  workflow_dispatch:
     inputs:
       triggerReason:
         description: "Why are you manually deploying?"
@@ -27,7 +27,12 @@ jobs:
           ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
             cd /home/ubuntu/algoduck_judge || git clone https://github.com/jwelyl/algoduck_judge.git algoduck_judge && cd algoduck_judge
             git pull origin develop
+
+            # Copy .env.template to .env and replace TESTCASE_BASE_PATH with GitHub secret
+            cp .env.template .env
+            sed -i "s|^TESTCASE_BASE_PATH=.*|TESTCASE_BASE_PATH=${{ secrets.TESTCASE_BASE_PATH }}|" .env
+
             docker stop judge-server || true && docker rm judge-server || true
             docker build -t judge-server .
-            docker run -d -p 8000:8000 --name judge-server judge-server
+            docker run -d -p 8000:8000 --env-file .env --name judge-server judge-server
           EOF
