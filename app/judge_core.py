@@ -9,6 +9,11 @@ import uuid
 import logging
 from app.models import SubmissionRequest, SubmissionResponse
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+
 def sort_key(path):
     # 숫자만 추출하여 정렬에 사용
     return int(re.sub(r"\D", "", path.stem))
