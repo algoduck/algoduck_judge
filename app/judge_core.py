@@ -1,6 +1,8 @@
 from fastapi import HTTPException
 import os
 import re
+import time
+import resource
 from pathlib import Path
 import shutil
 import subprocess
@@ -34,8 +36,6 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
     output_files = sorted(problem_dir.glob("output*"), key=sort_key)
 
     logger.info(f"Number of input_files: {len(input_files)}, output_files: {len(output_files)}")
-    logger.debug(f"Input files: {input_files}")
-    logger.debug(f"Output files: {output_files}")
 
     if not input_files or not output_files or len(input_files) != len(output_files):
         logger.error("Invalid or missing testcases. Path: %s, Inputs: %d, Outputs: %d",
@@ -62,7 +62,9 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                 result="CE",
                 message="Compilation failed",
                 stdout=compile_proc.stdout.decode(),
-                stderr=compile_proc.stderr.decode()
+                stderr=compile_proc.stderr.decode(),
+                time_ms=0,
+                memory_kb=0
             )
 
         for input_path, output_path in zip(input_files, output_files):
@@ -72,6 +74,7 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                 expected_output = fout.read().strip()
 
             try:
+                start_time = time.perf_counter()
                 run_proc = subprocess.run(
                     ["java", f"-Xmx{req.memoryLimitation}m", "-cp", str(temp_dir), "Main"],
                     input=input_data.encode(),
@@ -79,22 +82,40 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                     stderr=subprocess.PIPE,
                     timeout=max(1.0, req.timeLimitation / 1000)
                 )
+                end_time = time.perf_counter()
+                usage = resource.getrusage(resource.RUSAGE_CHILDREN)
+                memory_used_kb = usage.ru_maxrss
+                time_taken_ms = (end_time - start_time) * 1000
+
             except subprocess.TimeoutExpired:
                 logger.warning("Time limit exceeded for test case: %s", input_path.name)
-                return SubmissionResponse(result="TLE", message="Time limit exceeded", stdout="", stderr="")
+                return SubmissionResponse(result="TLE", message="Time limit exceeded", stdout="", stderr="", time_ms=req.timeLimitation, memory_kb=0)
             except MemoryError:
                 logger.warning("Memory limit exceeded for test case: %s", input_path.name)
-                return SubmissionResponse(result="MLE", message="Memory limit exceeded", stdout="", stderr="")
+                return SubmissionResponse(result="MLE", message="Memory limit exceeded", stdout="", stderr="", time_ms=0, memory_kb=0)
 
             if run_proc.returncode != 0:
                 logger.warning("Runtime error in test case: %s", input_path.name)
                 logger.warning("stdout: %s", run_proc.stdout.decode())
                 logger.warning("stderr: %s", run_proc.stderr.decode())
+
+                if "OutOfMemoryError" in run_proc.stderr.decode():
+                    return SubmissionResponse(
+                        result="MLE",
+                        message="Memory limit exceeded",
+                        stdout=run_proc.stdout.decode(),
+                        stderr=run_proc.stderr.decode(),
+                        time_ms=time_taken_ms,
+                        memory_kb=memory_used_kb
+                    )
+
                 return SubmissionResponse(
                     result="RE",
                     message="Runtime error",
                     stdout=run_proc.stdout.decode(),
-                    stderr=run_proc.stderr.decode()
+                    stderr=run_proc.stderr.decode(),
+                    time_ms=time_taken_ms,
+                    memory_kb=memory_used_kb
                 )
 
             actual_output = run_proc.stdout.decode().strip()
@@ -104,11 +125,13 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                     result="WA",
                     message="Wrong answer",
                     stdout=actual_output,
-                    stderr=""
+                    stderr="",
+                    time_ms=time_taken_ms,
+                    memory_kb=memory_used_kb
                 )
 
         logger.info("All test cases passed successfully.")
-        return SubmissionResponse(result="AC", message="Accepted", stdout="", stderr="")
+        return SubmissionResponse(result="AC", message="Accepted", stdout="", stderr="", time_ms=time_taken_ms, memory_kb=memory_used_kb)
 
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
