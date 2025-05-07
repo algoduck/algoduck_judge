@@ -2,7 +2,6 @@ from fastapi import HTTPException
 import os
 import re
 from pathlib import Path
-import resource
 import shutil
 import subprocess
 import uuid
@@ -15,7 +14,6 @@ logging.basicConfig(
 )
 
 def sort_key(path):
-    # 숫자만 추출하여 정렬에 사용
     return int(re.sub(r"\D", "", path.stem))
 
 def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
@@ -75,15 +73,11 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
 
             try:
                 run_proc = subprocess.run(
-                    ["java", "-cp", str(temp_dir), "Main"],
+                    ["java", f"-Xmx{req.memoryLimitation}m", "-cp", str(temp_dir), "Main"],
                     input=input_data.encode(),
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    timeout=max(1.0, req.timeLimitation / 1000),
-                    preexec_fn=lambda: resource.setrlimit(
-                        resource.RLIMIT_AS,
-                        (req.memoryLimitation * 1024 * 1024, req.memoryLimitation * 1024 * 1024)
-                    )
+                    timeout=max(1.0, req.timeLimitation / 1000)
                 )
             except subprocess.TimeoutExpired:
                 logger.warning("Time limit exceeded for test case: %s", input_path.name)
@@ -102,7 +96,7 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                     stdout=run_proc.stdout.decode(),
                     stderr=run_proc.stderr.decode()
                 )
-            
+
             actual_output = run_proc.stdout.decode().strip()
             if actual_output != expected_output:
                 logger.info("Wrong answer in test case: %s", input_path.name)
