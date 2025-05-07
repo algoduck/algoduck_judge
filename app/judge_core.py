@@ -94,13 +94,15 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
 
             if run_proc.returncode != 0:
                 logger.warning("Runtime error in test case: %s", input_path.name)
+                logger.warning("stdout: %s", run_proc.stdout.decode())
+                logger.warning("stderr: %s", run_proc.stderr.decode())
                 return SubmissionResponse(
                     result="RE",
                     message="Runtime error",
                     stdout=run_proc.stdout.decode(),
                     stderr=run_proc.stderr.decode()
                 )
-
+            
             actual_output = run_proc.stdout.decode().strip()
             if actual_output != expected_output:
                 logger.info("Wrong answer in test case: %s", input_path.name)
