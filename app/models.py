@@ -5,12 +5,14 @@ class SubmissionRequest(BaseModel):
     memberId: int
     language: int
     version: int
-    timeLimitation : int
-    memoryLimitation: int
+    timeLimitation: int  # ms
+    memoryLimitation: int  # MB
     sourceCode: str
 
 class SubmissionResponse(BaseModel):
-    result: str  # "success", "compile_error", "runtime_error", "time_limit_exceeded", "memory_limit_exceeded", "wrong_answer"
+    result: str  # "AC", "CE", "RE", "TLE", "MLE", "WA"
     message: str
     stdout: str
     stderr: str
+    time_ms: float
+    memory_kb: int
