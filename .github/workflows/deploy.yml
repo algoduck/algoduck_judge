@@ -25,14 +25,24 @@ jobs:
       - name: Deploy via SSH
         run: |
           ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-            cd /home/ubuntu/algoduck_judge || git clone https://github.com/jwelyl/algoduck_judge.git algoduck_judge && cd algoduck_judge
+            # 기본 경로로 이동하거나 클론
+            cd /home/ubuntu/algoduck_judge || git clone https://github.com/algoduck/algoduck_judge.git algoduck_judge && cd algoduck_judge
+
+            # 최신 develop 브랜치 pull
             git pull origin develop
 
-            # Copy .env.template to .env and replace TESTCASE_BASE_PATH with GitHub secret
+            # .env 생성
             cp .env.template .env
-            sed -i "s|^TESTCASE_BASE_PATH=.*|TESTCASE_BASE_PATH=${{ secrets.TESTCASE_BASE_PATH }}|" .env
+            echo "TESTCASE_BASE_PATH=/app/testcases" >> .env
 
+            # 기존 컨테이너 정리
             docker stop judge-server || true && docker rm judge-server || true
+
+            # 빌드 및 실행
             docker build -t judge-server .
-            docker run -d -p 8000:8000 --env-file .env --name judge-server judge-server
+            docker run -d -p 8000:8000 \
+              --name judge-server \
+              --env-file .env \
+              -v /home/ubuntu/testcases:/app/testcases \
+              judge-server
           EOF
