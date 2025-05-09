@@ -1,4 +1,4 @@
-name: Deploy to EC2
+name: Deploy Algoduck Judge Server to EC2
 
 on:
   push:
@@ -14,28 +14,51 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up SSH
-        uses: webfactory/ssh-agent@v0.5.4
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          ssh-private-key: ${{ secrets.EC2_KEY }}
+          python-version: '3.11'
 
-      - name: Deploy via SSH
-        env:
-          TESTCASE_S3_BUCKET_URL: ${{ secrets.TESTCASE_S3_BUCKET_URL }}
+      - name: Install envsubst
+        run: sudo apt-get install -y gettext
+
+      - name: Generate .env for Judge Server
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << EOF
-            cd /home/ubuntu/algoduck_judge || git clone https://github.com/algoduck/algoduck_judge.git algoduck_judge && cd algoduck_judge
-            git pull origin develop
+          cp .env.template .env.template.generated
+          envsubst < .env.template.generated > .env
+        env:
+          TESTCASE_BASE_PATH: ${{ secrets.TESTCASE_BASE_PATH }}
+          TESTCASE_S3_BUCKET_URL: ${{ secrets.TESTCASE_S3_BUCKET_URL }}
 
-            # .env 생성
-            cp .env.template .env
-            sed -i 's|^TESTCASE_BASE_PATH=.*|TESTCASE_BASE_PATH=/app/testcases|' .env
-            echo "TESTCASE_S3_BUCKET_URL=$TESTCASE_S3_BUCKET_URL" >> .env
+      - name: Copy files to EC2
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          source: |
+            Dockerfile,
+            .env,
+            app/
+          target: "~/algoduck_judge"
 
-            docker stop judge-server || true && docker rm judge-server || true
+      - name: Run Judge server on EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          script: |
+            cd ~/algoduck_judge
+
+            echo "🧹 기존 Judge 컨테이너 정리"
+            docker stop judge-server || true
+            docker rm judge-server || true
+
+            echo "🚀 Judge 서버 빌드 및 실행"
             docker build -t judge-server .
             docker run -d -p 8000:8000 \
               --name judge-server \
@@ -43,4 +66,22 @@ jobs:
               -v /home/ubuntu/testcases:/app/testcases \
               -v /home/ubuntu/cache/testcases:/app/cache/testcases \
               judge-server
-          EOF
+
+            echo "📄 Judge 서버 로그 저장"
+            sleep 3
+            docker logs judge-server > ~/judge-deploy.log || true
+
+      - name: Judge Health Check
+        run: |
+          echo "🔍 Judge 서버 Health Check 시작"
+          for i in {1..10}; do
+            status=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.EC2_HOST }}:8000/health || true)
+            if [ "$status" == "200" ]; then
+              echo "✅ Judge 서버 정상 작동 (HTTP 200)"
+              exit 0
+            fi
+            echo "⏳ 대기 중... (현재 상태: $status)"
+            sleep 5
+          done
+          echo "❌ Judge Health Check 실패"
+          exit 1
