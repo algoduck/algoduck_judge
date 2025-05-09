@@ -11,11 +11,6 @@ import uuid
 import logging
 from app.models import SubmissionRequest, SubmissionResponse
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
-
 def sort_key(path):
     return int(re.sub(r"\D", "", path.stem))
 
@@ -41,6 +36,9 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
         base_path=TESTCASE_BASE_PATH,
         bucket_name=TESTCASE_S3_BUCKET_URL
     )
+
+    logger.info(f"problem_dir : {problem_dir}")
+
     input_files = sorted(problem_dir.glob("input*"), key=sort_key)
     output_files = sorted(problem_dir.glob("output*"), key=sort_key)
 

@@ -4,6 +4,12 @@ from app.models import SubmissionRequest, SubmissionResponse
 from dotenv import load_dotenv
 import logging
 
+# 전역 로깅 설정
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+
 load_dotenv()
 
 app = FastAPI()
