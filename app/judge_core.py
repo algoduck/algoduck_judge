@@ -18,7 +18,7 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
 
-    logger.info(f"Start judging: problemId={req.problemId}, memberId={req.memberId}")
+    logger.info(f"Start judging: problemId={req.problemId}")
 
     if req.language != 1:
         logger.warning("Unsupported language requested: %s", req.language)
