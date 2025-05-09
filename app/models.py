@@ -2,7 +2,6 @@ from pydantic import BaseModel
 
 class SubmissionRequest(BaseModel):
     problemId: int
-    memberId: int
     language: int
     version: int
     timeLimitation: int  # ms
