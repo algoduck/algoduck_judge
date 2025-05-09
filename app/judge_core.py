@@ -29,9 +29,17 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
         raise HTTPException(status_code=400, detail="Only Java (language=1) is supported")
 
     TESTCASE_BASE_PATH = Path(os.getenv("TESTCASE_BASE_PATH", "/default/path"))
+    S3_BUCKET_NAME = os.getenv("TESTCASE_S3_BUCKET_NAME")
     logger.info("TESTCASE_BASE_PATH loaded: %s", TESTCASE_BASE_PATH)
+    logger.info("TESTCASE_S3_BUCKET_URL loaded: %s", TESTCASE_S3_BUCKET_URL)
 
-    problem_dir = TESTCASE_BASE_PATH / f"prob_{req.problemId:05d}"
+    # problem_dir = TESTCASE_BASE_PATH / f"prob_{req.problemId:05d}"
+
+    problem_dir = ensure_testcases_cached(
+        problem_id=req.problemId,
+        base_path=TESTCASE_BASE_PATH,
+        bucket_name=S3_BUCKET_NAME
+    )
     input_files = sorted(problem_dir.glob("input*"), key=sort_key)
     output_files = sorted(problem_dir.glob("output*"), key=sort_key)
 
