@@ -25,7 +25,7 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
         raise HTTPException(status_code=400, detail="Only Java (language=1) is supported")
 
     TESTCASE_BASE_PATH = Path(os.getenv("TESTCASE_BASE_PATH", "/default/path"))
-    TESTCASE_S3_BUCKET_URL = os.getenv("TESTCASE_S3_BUCKET_NAME")
+    TESTCASE_S3_BUCKET_URL = os.getenv("TESTCASE_S3_BUCKET_URL")
     logger.info("TESTCASE_BASE_PATH loaded: %s", TESTCASE_BASE_PATH)
     logger.info("TESTCASE_S3_BUCKET_URL loaded: %s", TESTCASE_S3_BUCKET_URL)
 
