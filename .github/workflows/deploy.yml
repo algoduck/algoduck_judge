@@ -29,6 +29,8 @@ jobs:
         run: |
           cp .env.template .env.template.generated
           envsubst < .env.template.generated > .env
+          echo "🔍 생성된 .env 파일 내용:"
+          cat .env
         env:
           TESTCASE_BASE_PATH: ${{ secrets.TESTCASE_BASE_PATH }}
           TESTCASE_S3_BUCKET_URL: ${{ secrets.TESTCASE_S3_BUCKET_URL }}
