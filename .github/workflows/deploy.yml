@@ -23,6 +23,8 @@ jobs:
           ssh-private-key: ${{ secrets.EC2_KEY }}
 
       - name: Deploy via SSH
+        env:
+          TESTCASE_S3_BUCKET_URL: ${{ secrets.TESTCASE_S3_BUCKET_URL }}
         run: |
           ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << EOF
             cd /home/ubuntu/algoduck_judge || git clone https://github.com/algoduck/algoduck_judge.git algoduck_judge && cd algoduck_judge
@@ -31,7 +33,7 @@ jobs:
             # .env 생성
             cp .env.template .env
             sed -i 's|^TESTCASE_BASE_PATH=.*|TESTCASE_BASE_PATH=/app/testcases|' .env
-            echo "TESTCASE_S3_BUCKET_URL=${{ secrets.TESTCASE_S3_BUCKET_URL }}" >> .env
+            echo "TESTCASE_S3_BUCKET_URL=$TESTCASE_S3_BUCKET_URL" >> .env
 
             docker stop judge-server || true && docker rm judge-server || true
             docker build -t judge-server .
