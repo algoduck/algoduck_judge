@@ -1,0 +1,53 @@
+diff --git a/.env.template b/.env.template
+index 55b074a..6dc1c41 100644
+--- a/.env.template
++++ b/.env.template
+@@ -1,4 +1,5 @@
+ # This is a template for environment variables.
+ # Fill in the actual value via GitHub Actions before deployment.
+ 
+-TESTCASE_BASE_PATH=
+\ No newline at end of file
++TESTCASE_BASE_PATH=
++TESTCASE_S3_BUCKET_URL=
+\ No newline at end of file
+diff --git a/.github/workflows/deploy.yml b/.github/workflows/deploy.yml
+index b05ca07..fa9751f 100644
+--- a/.github/workflows/deploy.yml
++++ b/.github/workflows/deploy.yml
+@@ -24,13 +24,14 @@ jobs:
+ 
+       - name: Deploy via SSH
+         run: |
+-          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
++          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << EOF
+             cd /home/ubuntu/algoduck_judge || git clone https://github.com/algoduck/algoduck_judge.git algoduck_judge && cd algoduck_judge
+             git pull origin develop
+ 
+             # .env 생성
+             cp .env.template .env
+             sed -i 's|^TESTCASE_BASE_PATH=.*|TESTCASE_BASE_PATH=/app/testcases|' .env
++            echo "TESTCASE_S3_BUCKET_URL=${{ secrets.S3_BUCKET_URL }}" >> .env
+ 
+             docker stop judge-server || true && docker rm judge-server || true
+             docker build -t judge-server .
+@@ -38,5 +39,6 @@ jobs:
+               --name judge-server \
+               --env-file .env \
+               -v /home/ubuntu/testcases:/app/testcases \
++              -v /home/ubuntu/cache/testcases:/app/cache/testcases \
+               judge-server
+           EOF
+diff --git a/requirements.txt b/requirements.txt
+index e2e08b1..1565b2c 100644
+--- a/requirements.txt
++++ b/requirements.txt
+@@ -3,4 +3,5 @@ uvicorn[standard]
+ pre-commit
+ httpx
+ pytest
+-python-dotenv
+\ No newline at end of file
++python-dotenv
++boto3
+\ No newline at end of file
