@@ -1,5 +1,5 @@
 from app.judge_core import judge_submission
-from app.util.cache_manager import save_metadata
+from app.util.cache_manager import load_metadata, save_metadata
 from fastapi import FastAPI
 from app.models import SubmissionRequest, SubmissionResponse
 from dotenv import load_dotenv
@@ -11,6 +11,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 
+load_metadata() # 서버 시작 시 캐시 메타데이터 불러오기
 load_dotenv()
 
 app = FastAPI()
