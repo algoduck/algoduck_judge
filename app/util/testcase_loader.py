@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+from app.util.cache_manager import update_usage
 import boto3
 import logging
 
@@ -34,4 +35,5 @@ def ensure_testcases_cached(problem_id: int, base_path: str, bucket_name: str):
             s3.download_file(bucket_name, key, str(local_path))
 
     logger.info(f"최종 local_problem_dir ={local_problem_dir}")
+    update_usage(problem_id)
     return local_problem_dir

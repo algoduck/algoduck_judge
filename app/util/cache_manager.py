@@ -23,6 +23,10 @@ def update_usage(problem_id: int):
     global update_count
     cache_meta[str(problem_id)] = int(time.time())
     update_count += 1
+
+    # 캐시 개수 초과 시 가장 오래된 캐시 제거 (LRU)
+    enforce_cache_limit()
+
     if update_count >= UPDATE_THRESHOLD:
         save_metadata()
         update_count = 0
