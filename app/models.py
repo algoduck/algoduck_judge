@@ -2,8 +2,8 @@ from pydantic import BaseModel
 
 class SubmissionRequest(BaseModel):
     problemId: int
-    language: int
-    version: int
+    language: str
+    version: str
     timeLimitation: int  # ms
     memoryLimitation: int  # MB
     sourceCode: str
