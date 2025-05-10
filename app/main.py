@@ -1,4 +1,5 @@
 from app.judge_core import judge_submission
+from app.util.cache_manager import save_metadata
 from fastapi import FastAPI
 from app.models import SubmissionRequest, SubmissionResponse
 from dotenv import load_dotenv
@@ -21,3 +22,7 @@ def health_check():
 @app.post("/judge", response_model=SubmissionResponse)
 def judge_code(req: SubmissionRequest):
     return judge_submission(req)
+
+@app.on_event("shutdown")
+def shutdown_event():
+    save_metadata()
