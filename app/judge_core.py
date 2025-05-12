@@ -20,7 +20,7 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
 
     logger.info(f"Start judging: problemId={req.problemId}")
 
-    if req.language != 1:
+    if req.language != "java":
         logger.warning("Unsupported language requested: %s", req.language)
         raise HTTPException(status_code=400, detail="Only Java (language=1) is supported")
 
@@ -92,7 +92,7 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                 end_time = time.perf_counter()
                 usage = resource.getrusage(resource.RUSAGE_CHILDREN)
                 memory_used_kb = usage.ru_maxrss
-                time_taken_ms = (end_time - start_time) * 1000
+                time_taken_ms = int((end_time - start_time) * 1000)
 
             except subprocess.TimeoutExpired:
                 logger.warning("Time limit exceeded for test case: %s", input_path.name)
