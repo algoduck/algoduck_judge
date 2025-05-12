@@ -13,5 +13,5 @@ class SubmissionResponse(BaseModel):
     message: str
     stdout: str
     stderr: str
-    time_ms: float
+    time_ms: int
     memory_kb: int
