@@ -20,7 +20,7 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
 
     logger.info(f"Start judging: problemId={req.problemId}")
 
-    if req.language != "java":
+    if req.language.lower() != "java":
         logger.warning("Unsupported language requested: %s", req.language)
         raise HTTPException(status_code=400, detail="Only Java (language=1) is supported")
 
