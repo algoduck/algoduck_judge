@@ -74,6 +74,11 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                 memoryUsage=0
             )
 
+        max_time_ms = 0
+        max_memory_kb = 0
+        time_list = []
+        memory_list = []
+
         for input_path, output_path in zip(input_files, output_files):
             logger.info("Running test case: %s", input_path.name)
             with open(input_path, "r") as fin, open(output_path, "r") as fout:
@@ -91,8 +96,15 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                 )
                 end_time = time.perf_counter()
                 usage = resource.getrusage(resource.RUSAGE_CHILDREN)
-                memory_used_kb = usage.ru_maxrss
+                
                 time_taken_ms = int((end_time - start_time) * 1000)
+                memory_used_kb = usage.ru_maxrss
+
+                time_list.append(time_taken_ms)
+                memory_list.append(memory_used_kb)
+
+                max_time_ms = max(max_time_ms, time_taken_ms)
+                max_memory_kb = max(max_memory_kb, memory_used_kb)
 
             except subprocess.TimeoutExpired:
                 logger.warning("Time limit exceeded for test case: %s", input_path.name)
@@ -138,7 +150,7 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                 )
 
         logger.info("All test cases passed successfully.")
-        return SubmissionResponse(result="AC", message="Accepted", stdout="", stderr="", executionTime=time_taken_ms, memoryUsage=memory_used_kb)
+        return SubmissionResponse(result="AC", message="Accepted", stdout="", stderr="", executionTime=max_time_ms, memoryUsage=max_memory_kb)
 
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
