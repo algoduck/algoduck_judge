@@ -70,8 +70,8 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                 message="Compilation failed",
                 stdout=compile_proc.stdout.decode(),
                 stderr=compile_proc.stderr.decode(),
-                time_ms=0,
-                memory_kb=0
+                executionTime=0,
+                memoryUsage=0
             )
 
         for input_path, output_path in zip(input_files, output_files):
@@ -96,10 +96,10 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
 
             except subprocess.TimeoutExpired:
                 logger.warning("Time limit exceeded for test case: %s", input_path.name)
-                return SubmissionResponse(result="TLE", message="Time limit exceeded", stdout="", stderr="", time_ms=req.timeLimitation, memory_kb=0)
+                return SubmissionResponse(result="TLE", message="Time limit exceeded", stdout="", stderr="", executionTime=req.timeLimitation, memoryUsage=0)
             except MemoryError:
                 logger.warning("Memory limit exceeded for test case: %s", input_path.name)
-                return SubmissionResponse(result="MLE", message="Memory limit exceeded", stdout="", stderr="", time_ms=0, memory_kb=0)
+                return SubmissionResponse(result="MLE", message="Memory limit exceeded", stdout="", stderr="", executionTime=0, memoryUsage=0)
 
             if run_proc.returncode != 0:
                 logger.warning("Runtime error in test case: %s", input_path.name)
@@ -112,8 +112,8 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                         message="Memory limit exceeded",
                         stdout=run_proc.stdout.decode(),
                         stderr=run_proc.stderr.decode(),
-                        time_ms=time_taken_ms,
-                        memory_kb=memory_used_kb
+                        executionTime=time_taken_ms,
+                        memoryUsage=memory_used_kb
                     )
 
                 return SubmissionResponse(
@@ -121,8 +121,8 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                     message="Runtime error",
                     stdout=run_proc.stdout.decode(),
                     stderr=run_proc.stderr.decode(),
-                    time_ms=time_taken_ms,
-                    memory_kb=memory_used_kb
+                    executionTime=time_taken_ms,
+                    memoryUsage=memory_used_kb
                 )
 
             actual_output = run_proc.stdout.decode().strip()
@@ -133,12 +133,12 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                     message="Wrong answer",
                     stdout=actual_output,
                     stderr="",
-                    time_ms=time_taken_ms,
-                    memory_kb=memory_used_kb
+                    executionTime=time_taken_ms,
+                    memoryUsage=memory_used_kb
                 )
 
         logger.info("All test cases passed successfully.")
-        return SubmissionResponse(result="AC", message="Accepted", stdout="", stderr="", time_ms=time_taken_ms, memory_kb=memory_used_kb)
+        return SubmissionResponse(result="AC", message="Accepted", stdout="", stderr="", executionTime=time_taken_ms, memoryUsage=memory_used_kb)
 
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
