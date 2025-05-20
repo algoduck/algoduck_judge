@@ -1,5 +1,13 @@
+from enum import Enum
 from pydantic import BaseModel
 
+class Status(str, Enum):
+    AC = "AC"
+    CE = "CE"
+    RE = "RE"
+    TLE = "TLE"
+    MLE = "MLE"
+    WA = "WA"
 class SubmissionRequest(BaseModel):
     problemId: int
     language: str
@@ -13,5 +21,5 @@ class SubmissionResponse(BaseModel):
     message: str
     stdout: str
     stderr: str
-    time_ms: int
-    memory_kb: int
+    executionTime: int
+    memoryUsage: int
