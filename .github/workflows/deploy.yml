@@ -79,7 +79,7 @@ jobs:
         run: |
           echo "🔍 Judge 서버 Health Check 시작"
           for i in {1..10}; do
-            status=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.EC2_HOST }}:8000/health || true)
+            status=$(curl -s -o /dev/null -w "%{http_code}" https://algoduck-judge.duckdns.org/health || true)
             if [ "$status" == "200" ]; then
               echo "✅ Judge 서버 정상 작동 (HTTP 200)"
               exit 0
