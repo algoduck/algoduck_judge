@@ -64,7 +64,9 @@ jobs:
 
             echo "🚀 Judge 서버 빌드 및 실행"
             docker build -t judge-server .
-            docker run -d -p 8000:8000 \
+            
+            docker run -d \
+              --network="host" \  # ✅ 핵심 수정: host 네트워크 사용
               --name judge-server \
               --env-file .env \
               -v /home/ubuntu/testcases:/app/testcases \
@@ -72,7 +74,7 @@ jobs:
               judge-server
 
             echo "📄 Judge 서버 로그 저장"
-            sleep 3
+            sleep 5
             docker logs judge-server > ~/judge-deploy.log || true
 
       - name: Judge Health Check
