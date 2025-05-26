@@ -66,7 +66,7 @@ jobs:
             docker build -t judge-server .
             
             docker run -d \
-              --network="host" \  # ✅ 핵심 수정: host 네트워크 사용
+              --network="host" \
               --name judge-server \
               --env-file .env \
               -v /home/ubuntu/testcases:/app/testcases \
