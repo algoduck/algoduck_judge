@@ -1,6 +1,7 @@
+from fastapi import FastAPI, WebSocket
 from app.judge_core import judge_submission
+from app.judge_ws import judge_websocket_handler
 from app.util.cache_manager import load_metadata, save_metadata
-from fastapi import FastAPI
 from app.models import SubmissionRequest, SubmissionResponse
 from dotenv import load_dotenv
 import logging
@@ -23,6 +24,11 @@ def health_check():
 @app.post("/judge", response_model=SubmissionResponse)
 def judge_code(req: SubmissionRequest):
     return judge_submission(req)
+
+# WebSocket 엔드포인트
+@app.websocket("/ws/judge")
+async def judge_websocket(websocket: WebSocket):
+    await judge_websocket_handler(websocket)
 
 @app.on_event("shutdown")
 def shutdown_event():
