@@ -23,3 +23,4 @@ class SubmissionResponse(BaseModel):
     stderr: str
     executionTime: int
     memoryUsage: int
+    percentage: int = 0
