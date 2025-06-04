@@ -5,3 +5,4 @@ __pycache__/
 *.pyd
 .env
 diff.txt
+.DS_Store
