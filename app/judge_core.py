@@ -49,6 +49,7 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                      problem_dir, len(input_files), len(output_files))
         raise HTTPException(status_code=500, detail="Invalid or missing testcases")
 
+    total_cnt = len(input_files)
     temp_dir = Path(f"/tmp/judge_{uuid.uuid4().hex[:8]}")
     os.makedirs(temp_dir, exist_ok=True)
     logger.info("Temporary directory created: %s", temp_dir)
@@ -71,7 +72,8 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                 stdout=compile_proc.stdout.decode(),
                 stderr=compile_proc.stderr.decode(),
                 executionTime=0,
-                memoryUsage=0
+                memoryUsage=0,
+                percentage=0
             )
 
         max_time_ms = 0
@@ -79,7 +81,7 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
         time_list = []
         memory_list = []
 
-        for input_path, output_path in zip(input_files, output_files):
+        for i, (input_path, output_path) in enumerate(zip(input_files, output_files)):
             logger.info("Running test case: %s", input_path.name)
             with open(input_path, "r") as fin, open(output_path, "r") as fout:
                 input_data = fin.read()
@@ -108,10 +110,10 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
 
             except subprocess.TimeoutExpired:
                 logger.warning("Time limit exceeded for test case: %s", input_path.name)
-                return SubmissionResponse(result="TLE", message="Time limit exceeded", stdout="", stderr="", executionTime=req.timeLimitation, memoryUsage=0)
+                return SubmissionResponse(result="TLE", message="Time limit exceeded", stdout="", stderr="", executionTime=req.timeLimitation, memoryUsage=0, percentage=int(((i + 1) / total_cnt) * 100))
             except MemoryError:
                 logger.warning("Memory limit exceeded for test case: %s", input_path.name)
-                return SubmissionResponse(result="MLE", message="Memory limit exceeded", stdout="", stderr="", executionTime=0, memoryUsage=0)
+                return SubmissionResponse(result="MLE", message="Memory limit exceeded", stdout="", stderr="", executionTime=0, memoryUsage=0, percentage=int(((i + 1) / total_cnt) * 100))
 
             if run_proc.returncode != 0:
                 logger.warning("Runtime error in test case: %s", input_path.name)
@@ -125,7 +127,8 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                         stdout=run_proc.stdout.decode(),
                         stderr=run_proc.stderr.decode(),
                         executionTime=time_taken_ms,
-                        memoryUsage=memory_used_kb
+                        memoryUsage=memory_used_kb,
+                        percentage=int(((i + 1) / total_cnt) * 100)
                     )
 
                 return SubmissionResponse(
@@ -134,7 +137,8 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                     stdout=run_proc.stdout.decode(),
                     stderr=run_proc.stderr.decode(),
                     executionTime=time_taken_ms,
-                    memoryUsage=memory_used_kb
+                    memoryUsage=memory_used_kb,
+                    percentage=int(((i + 1) / total_cnt) * 100)
                 )
 
             actual_output = run_proc.stdout.decode().strip()
@@ -146,11 +150,12 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                     stdout=actual_output,
                     stderr="",
                     executionTime=time_taken_ms,
-                    memoryUsage=memory_used_kb
+                    memoryUsage=memory_used_kb,
+                    percentage=int(((i + 1) / total_cnt) * 100)
                 )
 
         logger.info("All test cases passed successfully.")
-        return SubmissionResponse(result="AC", message="Accepted", stdout="", stderr="", executionTime=max_time_ms, memoryUsage=max_memory_kb)
+        return SubmissionResponse(result="AC", message="Accepted", stdout="", stderr="", executionTime=max_time_ms, memoryUsage=max_memory_kb, percentage=100)
 
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
