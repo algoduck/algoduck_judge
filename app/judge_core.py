@@ -110,10 +110,10 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
 
             except subprocess.TimeoutExpired:
                 logger.warning("Time limit exceeded for test case: %s", input_path.name)
-                return SubmissionResponse(result="TLE", message="Time limit exceeded", stdout="", stderr="", executionTime=req.timeLimitation, memoryUsage=0, percentage=int((i / total_cnt) * 100))
+                return SubmissionResponse(result="TLE", message="Time limit exceeded", stdout="", stderr="", executionTime=req.timeLimitation, memoryUsage=0, percentage=int(((i + 1) / total_cnt) * 100))
             except MemoryError:
                 logger.warning("Memory limit exceeded for test case: %s", input_path.name)
-                return SubmissionResponse(result="MLE", message="Memory limit exceeded", stdout="", stderr="", executionTime=0, memoryUsage=0, percentage=int((i / total_cnt) * 100))
+                return SubmissionResponse(result="MLE", message="Memory limit exceeded", stdout="", stderr="", executionTime=0, memoryUsage=0, percentage=int(((i + 1) / total_cnt) * 100))
 
             if run_proc.returncode != 0:
                 logger.warning("Runtime error in test case: %s", input_path.name)
@@ -128,7 +128,7 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                         stderr=run_proc.stderr.decode(),
                         executionTime=time_taken_ms,
                         memoryUsage=memory_used_kb,
-                        percentage=int((i / total_cnt) * 100)
+                        percentage=int(((i + 1) / total_cnt) * 100)
                     )
 
                 return SubmissionResponse(
@@ -138,7 +138,7 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                     stderr=run_proc.stderr.decode(),
                     executionTime=time_taken_ms,
                     memoryUsage=memory_used_kb,
-                    percentage=int((i / total_cnt) * 100)
+                    percentage=int(((i + 1) / total_cnt) * 100)
                 )
 
             actual_output = run_proc.stdout.decode().strip()
@@ -151,7 +151,7 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                     stderr="",
                     executionTime=time_taken_ms,
                     memoryUsage=memory_used_kb,
-                    percentage=int((i / total_cnt) * 100)
+                    percentage=int(((i + 1) / total_cnt) * 100)
                 )
 
         logger.info("All test cases passed successfully.")
