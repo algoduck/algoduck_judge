@@ -1,11 +1,10 @@
 # app/ws_judge.py
 
 from fastapi import WebSocket, WebSocketDisconnect
-from app.models import SubmissionRequest
+from app.models import SubmissionRequest, JudgeProgressResponse
 from app.util.testcase_loader import ensure_testcases_cached
 import os, uuid, re, shutil, subprocess, time, resource
 from pathlib import Path
-import json
 import logging
 
 def sort_key(path):
@@ -21,11 +20,11 @@ async def judge_websocket_handler(websocket: WebSocket):
         req = SubmissionRequest(**req_json)
 
         if req.language.lower() != "java":
-            await websocket.send_json({
-                "result": "CE",
-                "message": "Only Java is supported",
-                "percentage": 0
-            })
+            await websocket.send_json(JudgeProgressResponse(
+                result="CE",
+                message="Only Java is supported",
+                percentage=0
+            ).model_dump())
             return
 
         TESTCASE_BASE_PATH = Path(os.getenv("TESTCASE_BASE_PATH", "/default/path"))
@@ -41,11 +40,11 @@ async def judge_websocket_handler(websocket: WebSocket):
         output_files = sorted(problem_dir.glob("output*"), key=sort_key)
 
         if not input_files or len(input_files) != len(output_files):
-            await websocket.send_json({
-                "result": "CE",
-                "message": "Invalid or missing testcases",
-                "percentage": 0
-            })
+            await websocket.send_json(JudgeProgressResponse(
+                result="CE",
+                message="Invalid or missing testcases",
+                percentage=0
+            ).model_dump())
             return
 
         total_cnt = len(input_files)
@@ -60,15 +59,15 @@ async def judge_websocket_handler(websocket: WebSocket):
         compile_proc = subprocess.run(compile_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         if compile_proc.returncode != 0:
-            await websocket.send_json({
-                "result": "CE",
-                "message": "Compilation failed",
-                "stdout": compile_proc.stdout.decode(),
-                "stderr": compile_proc.stderr.decode(),
-                "executionTime": 0,
-                "memoryUsage": 0,
-                "percentage": 0
-            })
+            await websocket.send_json(JudgeProgressResponse(
+                result="CE",
+                message="Compilation failed",
+                stdout=compile_proc.stdout.decode(),
+                stderr=compile_proc.stderr.decode(),
+                executionTime=0,
+                memoryUsage=0,
+                percentage=0
+            ).model_dump())
             return
 
         max_time_ms = 0
@@ -97,66 +96,61 @@ async def judge_websocket_handler(websocket: WebSocket):
                 max_memory_kb = max(max_memory_kb, memory_used_kb)
 
             except subprocess.TimeoutExpired:
-                await websocket.send_json({
-                    "index": i,
-                    "result": "TLE",
-                    "message": "Time limit exceeded",
-                    "stdout": "",
-                    "stderr": "",
-                    "executionTime": req.timeLimitation,
-                    "memoryUsage": 0,
-                    "percentage": int(((i + 1) / total_cnt) * 100)
-                })
+                await websocket.send_json(JudgeProgressResponse(
+                    index=i,
+                    result="TLE",
+                    message="Time limit exceeded",
+                    executionTime=req.timeLimitation,
+                    memoryUsage=0,
+                    percentage=int(((i + 1) / total_cnt) * 100)
+                ).model_dump())
                 break
 
-            if run_proc.returncode != 0 or "OutOfMemoryError" in run_proc.stderr.decode():
-                await websocket.send_json({
-                    "index": i,
-                    "result": "MLE" if "OutOfMemoryError" in run_proc.stderr.decode() else "RE",
-                    "message": "Memory limit exceeded" if "OutOfMemoryError" in run_proc.stderr.decode() else "Runtime error",
-                    "stdout": run_proc.stdout.decode(),
-                    "stderr": run_proc.stderr.decode(),
-                    "executionTime": time_taken_ms,
-                    "memoryUsage": memory_used_kb,
-                    "percentage": int(((i + 1) / total_cnt) * 100)
-                })
+            stderr_decoded = run_proc.stderr.decode()
+            if run_proc.returncode != 0 or "OutOfMemoryError" in stderr_decoded:
+                await websocket.send_json(JudgeProgressResponse(
+                    index=i,
+                    result="MLE" if "OutOfMemoryError" in stderr_decoded else "RE",
+                    message="Memory limit exceeded" if "OutOfMemoryError" in stderr_decoded else "Runtime error",
+                    stdout=run_proc.stdout.decode(),
+                    stderr=stderr_decoded,
+                    executionTime=time_taken_ms,
+                    memoryUsage=memory_used_kb,
+                    percentage=int(((i + 1) / total_cnt) * 100)
+                ).model_dump())
                 break
 
             actual_output = run_proc.stdout.decode().strip()
             if actual_output != expected_output:
-                await websocket.send_json({
-                    "index": i,
-                    "result": "WA",
-                    "message": "Wrong answer",
-                    "stdout": actual_output,
-                    "stderr": "",
-                    "executionTime": time_taken_ms,
-                    "memoryUsage": memory_used_kb,
-                    "percentage": int(((i + 1) / total_cnt) * 100)
-                })
+                await websocket.send_json(JudgeProgressResponse(
+                    index=i,
+                    result="WA",
+                    message="Wrong answer",
+                    stdout=actual_output,
+                    executionTime=time_taken_ms,
+                    memoryUsage=memory_used_kb,
+                    percentage=int(((i + 1) / total_cnt) * 100)
+                ).model_dump())
                 break
 
-            # 성공한 테스트케이스 전송
-            await websocket.send_json({
-                "index": i,
-                "result": "PASS",
-                "message": "Passed",
-                "stdout": actual_output,
-                "stderr": "",
-                "executionTime": time_taken_ms,
-                "memoryUsage": memory_used_kb,
-                "percentage": int(((i + 1) / total_cnt) * 100)
-            })
+            await websocket.send_json(JudgeProgressResponse(
+                index=i,
+                result="PASS",
+                message="Passed",
+                stdout=actual_output,
+                executionTime=time_taken_ms,
+                memoryUsage=memory_used_kb,
+                percentage=int(((i + 1) / total_cnt) * 100)
+            ).model_dump())
 
         else:
-            # 모두 성공 시
-            await websocket.send_json({
-                "result": "AC",
-                "message": "All testcases passed",
-                "percentage": 100,
-                "executionTime": max_time_ms,
-                "memoryUsage": max_memory_kb
-            })
+            await websocket.send_json(JudgeProgressResponse(
+                result="AC",
+                message="All testcases passed",
+                percentage=100,
+                executionTime=max_time_ms,
+                memoryUsage=max_memory_kb
+            ).model_dump())
 
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)

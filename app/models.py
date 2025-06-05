@@ -1,5 +1,6 @@
 from enum import Enum
 from pydantic import BaseModel
+from typing import Optional
 
 class Status(str, Enum):
     AC = "AC"
@@ -23,4 +24,14 @@ class SubmissionResponse(BaseModel):
     stderr: str
     executionTime: int
     memoryUsage: int
+    percentage: int = 0
+
+class JudgeProgressResponse(BaseModel):
+    index: Optional[int] = None
+    result: str
+    message: str
+    stdout: Optional[str] = ""
+    stderr: Optional[str] = ""
+    executionTime: int = 0
+    memoryUsage: int = 0
     percentage: int = 0
