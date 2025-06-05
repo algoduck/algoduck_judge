@@ -21,6 +21,7 @@ async def judge_websocket_handler(websocket: WebSocket):
 
         if req.language.lower() != "java":
             await websocket.send_json(JudgeProgressResponse(
+                submissionId=req.submissionId,
                 result="CE",
                 message="Only Java is supported",
                 percentage=0
@@ -41,6 +42,7 @@ async def judge_websocket_handler(websocket: WebSocket):
 
         if not input_files or len(input_files) != len(output_files):
             await websocket.send_json(JudgeProgressResponse(
+                submissionId=req.submissionId,
                 result="CE",
                 message="Invalid or missing testcases",
                 percentage=0
@@ -60,6 +62,7 @@ async def judge_websocket_handler(websocket: WebSocket):
 
         if compile_proc.returncode != 0:
             await websocket.send_json(JudgeProgressResponse(
+                submissionId=req.submissionId,
                 result="CE",
                 message="Compilation failed",
                 stdout=compile_proc.stdout.decode(),
@@ -98,6 +101,7 @@ async def judge_websocket_handler(websocket: WebSocket):
             except subprocess.TimeoutExpired:
                 await websocket.send_json(JudgeProgressResponse(
                     index=i,
+                    submissionId=req.submissionId,
                     result="TLE",
                     message="Time Limit Exceeded",
                     executionTime=req.timeLimitation,
@@ -110,6 +114,7 @@ async def judge_websocket_handler(websocket: WebSocket):
             if run_proc.returncode != 0 or "OutOfMemoryError" in stderr_decoded:
                 await websocket.send_json(JudgeProgressResponse(
                     index=i,
+                    submissionId=req.submissionId,
                     result="MLE" if "OutOfMemoryError" in stderr_decoded else "RE",
                     message="Memory Limit Exceeded" if "OutOfMemoryError" in stderr_decoded else "Runtime Error",
                     stdout=run_proc.stdout.decode(),
@@ -124,6 +129,7 @@ async def judge_websocket_handler(websocket: WebSocket):
             if actual_output != expected_output:
                 await websocket.send_json(JudgeProgressResponse(
                     index=i,
+                    submissionId=req.submissionId,
                     result="WA",
                     message="Wrong Answer",
                     stdout=actual_output,
@@ -135,6 +141,7 @@ async def judge_websocket_handler(websocket: WebSocket):
 
             await websocket.send_json(JudgeProgressResponse(
                 index=i,
+                submissionId=req.submissionId,
                 result="PASS",
                 message="Passed",
                 stdout=actual_output,
@@ -145,6 +152,7 @@ async def judge_websocket_handler(websocket: WebSocket):
 
         else:
             await websocket.send_json(JudgeProgressResponse(
+                submissionId=req.submissionId,
                 result="AC",
                 message="Accepted",
                 percentage=100,
