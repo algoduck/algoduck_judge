@@ -99,7 +99,7 @@ async def judge_websocket_handler(websocket: WebSocket):
                 await websocket.send_json(JudgeProgressResponse(
                     index=i,
                     result="TLE",
-                    message="Time limit exceeded",
+                    message="Time Limit Exceeded",
                     executionTime=req.timeLimitation,
                     memoryUsage=0,
                     percentage=int(((i + 1) / total_cnt) * 100)
@@ -111,7 +111,7 @@ async def judge_websocket_handler(websocket: WebSocket):
                 await websocket.send_json(JudgeProgressResponse(
                     index=i,
                     result="MLE" if "OutOfMemoryError" in stderr_decoded else "RE",
-                    message="Memory limit exceeded" if "OutOfMemoryError" in stderr_decoded else "Runtime error",
+                    message="Memory Limit Exceeded" if "OutOfMemoryError" in stderr_decoded else "Runtime Error",
                     stdout=run_proc.stdout.decode(),
                     stderr=stderr_decoded,
                     executionTime=time_taken_ms,
@@ -125,7 +125,7 @@ async def judge_websocket_handler(websocket: WebSocket):
                 await websocket.send_json(JudgeProgressResponse(
                     index=i,
                     result="WA",
-                    message="Wrong answer",
+                    message="Wrong Answer",
                     stdout=actual_output,
                     executionTime=time_taken_ms,
                     memoryUsage=memory_used_kb,
@@ -146,7 +146,7 @@ async def judge_websocket_handler(websocket: WebSocket):
         else:
             await websocket.send_json(JudgeProgressResponse(
                 result="AC",
-                message="All testcases passed",
+                message="Accepted",
                 percentage=100,
                 executionTime=max_time_ms,
                 memoryUsage=max_memory_kb
