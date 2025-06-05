@@ -11,6 +11,7 @@ class Status(str, Enum):
     WA = "WA"
 class SubmissionRequest(BaseModel):
     problemId: int
+    submissionId: int
     language: str
     version: str
     timeLimitation: int  # ms
@@ -28,6 +29,7 @@ class SubmissionResponse(BaseModel):
 
 class JudgeProgressResponse(BaseModel):
     index: Optional[int] = None
+    submissionId: int
     result: str
     message: str
     stdout: Optional[str] = ""
