@@ -1,10 +1,14 @@
 from fastapi import FastAPI, WebSocket
-from app.judge_core import judge_submission
-from app.judge_ws import judge_websocket_handler
-from app.util.cache_manager import load_metadata, save_metadata
-from app.models import SubmissionRequest, SubmissionResponse
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
+import threading
 import logging
+
+from app.judge.core.judge_core import judge_submission
+from app.judge.core.judge_ws import judge_websocket_handler
+from app.util.cache_manager import load_metadata, save_metadata
+from app.judge.model.models import SubmissionRequest, SubmissionResponse
+from app.judge.queue.judge_consumer import start_consumer
 
 # 전역 로깅 설정
 logging.basicConfig(
@@ -12,10 +16,21 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 
-load_metadata() # 서버 시작 시 캐시 메타데이터 불러오기
 load_dotenv()
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # startup
+    load_metadata()
+    thread = threading.Thread(target=start_consumer, daemon=True)
+    thread.start()
+
+    yield  # 앱 실행 중
+
+    # shutdown
+    save_metadata()
+
+app = FastAPI(lifespan=lifespan)
 
 @app.get("/health")
 def health_check():
@@ -25,11 +40,6 @@ def health_check():
 def judge_code(req: SubmissionRequest):
     return judge_submission(req)
 
-# WebSocket 엔드포인트
 @app.websocket("/ws/judge")
 async def judge_websocket(websocket: WebSocket):
     await judge_websocket_handler(websocket)
-
-@app.on_event("shutdown")
-def shutdown_event():
-    save_metadata()

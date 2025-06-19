@@ -5,3 +5,4 @@ httpx
 pytest
 python-dotenv
 boto3
+pika
