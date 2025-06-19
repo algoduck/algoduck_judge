@@ -19,6 +19,8 @@ class SubmissionRequest(BaseModel):
     sourceCode: str
 
 class SubmissionResponse(BaseModel):
+    problemId: int
+    submissionId: int
     result: str  # "AC", "CE", "RE", "TLE", "MLE", "WA"
     message: str
     stdout: str

@@ -1,5 +1,3 @@
-# app/judge/core/judge_core.py
-
 from app.util.testcase_loader import ensure_testcases_cached
 import os
 import re
@@ -26,6 +24,8 @@ def judge_submission(request_json: dict) -> dict:
     except Exception as e:
         logger.error("Invalid request format: %s", str(e))
         return SubmissionResponse(
+            problemId=request_json.get("problemId", -1),
+            submissionId=request_json.get("submissionId", -1),
             result="FAIL",
             message="Invalid request format",
             stdout="",
@@ -38,6 +38,8 @@ def judge_submission(request_json: dict) -> dict:
     if req.language.lower() != "java":
         logger.warning("Unsupported language requested: %s", req.language)
         return SubmissionResponse(
+            problemId=req.problemId,
+            submissionId=req.submissionId,
             result="CE",
             message="Only Java is supported",
             stdout="",
@@ -62,6 +64,8 @@ def judge_submission(request_json: dict) -> dict:
     if not input_files or not output_files or len(input_files) != len(output_files):
         logger.error("Invalid or missing testcases.")
         return SubmissionResponse(
+            problemId=req.problemId,
+            submissionId=req.submissionId,
             result="FAIL",
             message="Invalid or missing testcases",
             stdout="",
@@ -85,6 +89,8 @@ def judge_submission(request_json: dict) -> dict:
 
         if compile_proc.returncode != 0:
             return SubmissionResponse(
+                problemId=req.problemId,
+                submissionId=req.submissionId,
                 result="CE",
                 message="Compilation failed",
                 stdout=compile_proc.stdout.decode(),
@@ -122,6 +128,8 @@ def judge_submission(request_json: dict) -> dict:
 
             except subprocess.TimeoutExpired:
                 return SubmissionResponse(
+                    problemId=req.problemId,
+                    submissionId=req.submissionId,
                     result="TLE",
                     message="Time limit exceeded",
                     stdout="",
@@ -132,6 +140,8 @@ def judge_submission(request_json: dict) -> dict:
                 ).model_dump()
             except MemoryError:
                 return SubmissionResponse(
+                    problemId=req.problemId,
+                    submissionId=req.submissionId,
                     result="MLE",
                     message="Memory limit exceeded",
                     stdout="",
@@ -144,6 +154,8 @@ def judge_submission(request_json: dict) -> dict:
             if run_proc.returncode != 0:
                 if "OutOfMemoryError" in run_proc.stderr.decode():
                     return SubmissionResponse(
+                        problemId=req.problemId,
+                        submissionId=req.submissionId,
                         result="MLE",
                         message="Memory limit exceeded",
                         stdout=run_proc.stdout.decode(),
@@ -154,6 +166,8 @@ def judge_submission(request_json: dict) -> dict:
                     ).model_dump()
 
                 return SubmissionResponse(
+                    problemId=req.problemId,
+                    submissionId=req.submissionId,
                     result="RE",
                     message="Runtime error",
                     stdout=run_proc.stdout.decode(),
@@ -166,6 +180,8 @@ def judge_submission(request_json: dict) -> dict:
             actual_output = run_proc.stdout.decode().strip()
             if actual_output != expected_output:
                 return SubmissionResponse(
+                    problemId=req.problemId,
+                    submissionId=req.submissionId,
                     result="WA",
                     message="Wrong answer",
                     stdout=actual_output,
@@ -176,6 +192,8 @@ def judge_submission(request_json: dict) -> dict:
                 ).model_dump()
 
         return SubmissionResponse(
+            problemId=req.problemId,
+            submissionId=req.submissionId,
             result="AC",
             message="Accepted",
             stdout="",
