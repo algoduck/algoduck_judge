@@ -51,6 +51,7 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           source: |
             Dockerfile,
+            requirements.txt,
             .env,
             app/
           target: "~/algoduck_judge"

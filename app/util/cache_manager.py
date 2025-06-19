@@ -16,7 +16,7 @@ def load_metadata():
             cache_meta = json.load(f)
 
 def save_metadata():
-    with open(METADATA_PATH, "W") as f:
+    with open(METADATA_PATH, "w") as f:
         json.dump(cache_meta, f)
 
 def update_usage(problem_id: int):
