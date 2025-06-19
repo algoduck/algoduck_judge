@@ -1,7 +1,7 @@
 # app/ws_judge.py
 
 from fastapi import WebSocket, WebSocketDisconnect
-from app.models import SubmissionRequest, JudgeProgressResponse
+from app.judge.model.models import SubmissionRequest, JudgeProgressResponse
 from app.util.testcase_loader import ensure_testcases_cached
 import os, uuid, re, shutil, subprocess, time, resource
 from pathlib import Path

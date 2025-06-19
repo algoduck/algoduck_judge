@@ -1,5 +1,6 @@
+# app/judge/core/judge_core.py
+
 from app.util.testcase_loader import ensure_testcases_cached
-from fastapi import HTTPException
 import os
 import re
 import time
@@ -9,27 +10,45 @@ import shutil
 import subprocess
 import uuid
 import logging
-from app.models import SubmissionRequest, SubmissionResponse
+from app.judge.model.models import SubmissionRequest, SubmissionResponse
 
 def sort_key(path):
     return int(re.sub(r"\D", "", path.stem))
 
-def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
+def judge_submission(request_json: dict) -> dict:
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
 
-    logger.info(f"Start judging: problemId={req.problemId}")
+    logger.info(f"Start judging: problemId={request_json.get('problemId')}")
+
+    try:
+        req = SubmissionRequest(**request_json)
+    except Exception as e:
+        logger.error("Invalid request format: %s", str(e))
+        return SubmissionResponse(
+            result="FAIL",
+            message="Invalid request format",
+            stdout="",
+            stderr=str(e),
+            executionTime=0,
+            memoryUsage=0,
+            percentage=0
+        ).model_dump()
 
     if req.language.lower() != "java":
         logger.warning("Unsupported language requested: %s", req.language)
-        raise HTTPException(status_code=400, detail="Only Java (language=1) is supported")
+        return SubmissionResponse(
+            result="CE",
+            message="Only Java is supported",
+            stdout="",
+            stderr="Unsupported language",
+            executionTime=0,
+            memoryUsage=0,
+            percentage=0
+        ).model_dump()
 
     TESTCASE_BASE_PATH = Path(os.getenv("TESTCASE_BASE_PATH", "/default/path"))
     TESTCASE_S3_BUCKET_URL = os.getenv("TESTCASE_S3_BUCKET_URL")
-    logger.info("TESTCASE_BASE_PATH loaded: %s", TESTCASE_BASE_PATH)
-    logger.info("TESTCASE_S3_BUCKET_URL loaded: %s", TESTCASE_S3_BUCKET_URL)
-
-    # problem_dir = TESTCASE_BASE_PATH / f"prob_{req.problemId:05d}"
 
     problem_dir = ensure_testcases_cached(
         problem_id=req.problemId,
@@ -37,35 +56,34 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
         bucket_name=TESTCASE_S3_BUCKET_URL
     )
 
-    logger.info(f"problem_dir : {problem_dir}")
-
     input_files = sorted(problem_dir.glob("input*"), key=sort_key)
     output_files = sorted(problem_dir.glob("output*"), key=sort_key)
 
-    logger.info(f"Number of input_files: {len(input_files)}, output_files: {len(output_files)}")
-
     if not input_files or not output_files or len(input_files) != len(output_files):
-        logger.error("Invalid or missing testcases. Path: %s, Inputs: %d, Outputs: %d",
-                     problem_dir, len(input_files), len(output_files))
-        raise HTTPException(status_code=500, detail="Invalid or missing testcases")
+        logger.error("Invalid or missing testcases.")
+        return SubmissionResponse(
+            result="FAIL",
+            message="Invalid or missing testcases",
+            stdout="",
+            stderr="",
+            executionTime=0,
+            memoryUsage=0,
+            percentage=0
+        ).model_dump()
 
     total_cnt = len(input_files)
     temp_dir = Path(f"/tmp/judge_{uuid.uuid4().hex[:8]}")
     os.makedirs(temp_dir, exist_ok=True)
-    logger.info("Temporary directory created: %s", temp_dir)
 
     try:
         java_file = temp_dir / "Main.java"
         with open(java_file, "w") as f:
             f.write(req.sourceCode)
-        logger.info("Java source code written to %s", java_file)
 
         compile_cmd = ["javac", str(java_file)]
-        logger.info("Compiling Java code...")
         compile_proc = subprocess.run(compile_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         if compile_proc.returncode != 0:
-            logger.warning("Compilation failed.")
             return SubmissionResponse(
                 result="CE",
                 message="Compilation failed",
@@ -74,15 +92,12 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                 executionTime=0,
                 memoryUsage=0,
                 percentage=0
-            )
+            ).model_dump()
 
         max_time_ms = 0
         max_memory_kb = 0
-        time_list = []
-        memory_list = []
 
         for i, (input_path, output_path) in enumerate(zip(input_files, output_files)):
-            logger.info("Running test case: %s", input_path.name)
             with open(input_path, "r") as fin, open(output_path, "r") as fout:
                 input_data = fin.read()
                 expected_output = fout.read().strip()
@@ -98,28 +113,35 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                 )
                 end_time = time.perf_counter()
                 usage = resource.getrusage(resource.RUSAGE_CHILDREN)
-                
+
                 time_taken_ms = int((end_time - start_time) * 1000)
                 memory_used_kb = usage.ru_maxrss
-
-                time_list.append(time_taken_ms)
-                memory_list.append(memory_used_kb)
 
                 max_time_ms = max(max_time_ms, time_taken_ms)
                 max_memory_kb = max(max_memory_kb, memory_used_kb)
 
             except subprocess.TimeoutExpired:
-                logger.warning("Time limit exceeded for test case: %s", input_path.name)
-                return SubmissionResponse(result="TLE", message="Time limit exceeded", stdout="", stderr="", executionTime=req.timeLimitation, memoryUsage=0, percentage=int(((i + 1) / total_cnt) * 100))
+                return SubmissionResponse(
+                    result="TLE",
+                    message="Time limit exceeded",
+                    stdout="",
+                    stderr="",
+                    executionTime=req.timeLimitation,
+                    memoryUsage=0,
+                    percentage=int(((i + 1) / total_cnt) * 100)
+                ).model_dump()
             except MemoryError:
-                logger.warning("Memory limit exceeded for test case: %s", input_path.name)
-                return SubmissionResponse(result="MLE", message="Memory limit exceeded", stdout="", stderr="", executionTime=0, memoryUsage=0, percentage=int(((i + 1) / total_cnt) * 100))
+                return SubmissionResponse(
+                    result="MLE",
+                    message="Memory limit exceeded",
+                    stdout="",
+                    stderr="",
+                    executionTime=0,
+                    memoryUsage=0,
+                    percentage=int(((i + 1) / total_cnt) * 100)
+                ).model_dump()
 
             if run_proc.returncode != 0:
-                logger.warning("Runtime error in test case: %s", input_path.name)
-                logger.warning("stdout: %s", run_proc.stdout.decode())
-                logger.warning("stderr: %s", run_proc.stderr.decode())
-
                 if "OutOfMemoryError" in run_proc.stderr.decode():
                     return SubmissionResponse(
                         result="MLE",
@@ -129,7 +151,7 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                         executionTime=time_taken_ms,
                         memoryUsage=memory_used_kb,
                         percentage=int(((i + 1) / total_cnt) * 100)
-                    )
+                    ).model_dump()
 
                 return SubmissionResponse(
                     result="RE",
@@ -139,11 +161,10 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                     executionTime=time_taken_ms,
                     memoryUsage=memory_used_kb,
                     percentage=int(((i + 1) / total_cnt) * 100)
-                )
+                ).model_dump()
 
             actual_output = run_proc.stdout.decode().strip()
             if actual_output != expected_output:
-                logger.info("Wrong answer in test case: %s", input_path.name)
                 return SubmissionResponse(
                     result="WA",
                     message="Wrong answer",
@@ -152,11 +173,17 @@ def judge_submission(req: SubmissionRequest) -> SubmissionResponse:
                     executionTime=time_taken_ms,
                     memoryUsage=memory_used_kb,
                     percentage=int(((i + 1) / total_cnt) * 100)
-                )
+                ).model_dump()
 
-        logger.info("All test cases passed successfully.")
-        return SubmissionResponse(result="AC", message="Accepted", stdout="", stderr="", executionTime=max_time_ms, memoryUsage=max_memory_kb, percentage=100)
+        return SubmissionResponse(
+            result="AC",
+            message="Accepted",
+            stdout="",
+            stderr="",
+            executionTime=max_time_ms,
+            memoryUsage=max_memory_kb,
+            percentage=100
+        ).model_dump()
 
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
-        logger.info("Temporary directory cleaned up.")
