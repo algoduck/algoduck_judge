@@ -4,7 +4,7 @@ from app.judge.core.judge_core import judge_submission
 import os
 
 # 환경 변수에서 로드
-RABBITMQ_HOST = os.getenv("JUDGE_QUEUE_HOST", "rabbitmq")
+RABBITMQ_HOST = os.getenv("JUDGE_QUEUE_DOMAIN_NAME", "rabbitmq")
 RABBITMQ_USERNAME = os.getenv("JUDGE_QUEUE_USERNAME", "guest")
 RABBITMQ_PASSWORD = os.getenv("JUDGE_QUEUE_PASSWORD", "guest")
 
