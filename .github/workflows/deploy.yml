@@ -29,7 +29,7 @@ jobs:
         run: |
           cp .env.template .env.template.generated
           envsubst < .env.template.generated > .env
-          echo "🔍 생성된 .env 파일 내용:"
+          echo "생성된 .env 파일 내용:"
           cat .env
         env:
           TESTCASE_BASE_PATH: ${{ secrets.TESTCASE_BASE_PATH }}
@@ -66,11 +66,11 @@ jobs:
           script: |
             cd ~/algoduck_judge
 
-            echo "🧹 기존 Judge 컨테이너 정리"
+            echo " 기존 Judge 컨테이너 정리"
             docker stop judge-server || true
             docker rm judge-server || true
 
-            echo "🚀 Judge 서버 빌드 및 실행"
+            echo " Judge 서버 빌드 및 실행"
             docker build -t judge-server .
             
             docker run -d \
@@ -81,7 +81,7 @@ jobs:
               -v /home/ubuntu/cache/testcases:/app/cache/testcases \
               judge-server
 
-            echo "📄 Judge 서버 로그 저장"
+            echo "Judge 서버 로그 저장"
             sleep 5
             docker logs judge-server > ~/judge-deploy.log || true
 
