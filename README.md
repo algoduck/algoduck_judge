@@ -86,18 +86,20 @@ uvicorn app.main:app --reload
 
 ```
 judge_server/
-├── app/                     # FastAPI 서버 코드
-│   ├── main.py
-│   ├── models.py
-│   └── judge_core.py
-├── testcases/               # 문제별 테스트케이스
-├── submissions/             # 제출된 코드 임시 저장
-├── githooks/                # 커밋 메시지 자동 템플릿
-│   ├── prepare-commit-msg
-│   └── install-hooks.sh
-├── .pre-commit-config.yaml  # 코드 스타일 검사 설정
-├── requirements.txt
-└── README.md
+├── app
+    ├──__init__.py
+    ├── judge
+    │   ├── core
+    │   │   ├── judge_core.py
+    │   │   └── judge_ws.py
+    │   ├── model
+    │   │   └── models.py
+    │   └── queue
+    │       └── judge_consumer.py
+    ├── main.py
+    └── util
+        ├── cache_manager.py
+        └── testcase_loader.py
 ```
 
 ---
