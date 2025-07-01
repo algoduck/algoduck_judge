@@ -1,11 +1,11 @@
-# 🧠 Judge Server
+# Judge Server
 
 FastAPI 기반의 온라인 채점 서버입니다.  
 사용자의 Java 소스코드를 컴파일하고 테스트케이스로 채점하여 결과를 반환합니다.
 
 ---
 
-## ✅ 전체 설치 및 실행 방법
+## 전체 설치 및 실행 방법
 
 ### 0. Python 설치
 
@@ -82,7 +82,7 @@ uvicorn app.main:app --reload
 
 ---
 
-## 📁 폴더 구조
+## 프로젝트 구조
 
 ```
 judge_server/
