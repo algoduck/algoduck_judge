@@ -1,39 +1,66 @@
 from pathlib import Path
-import os
-from app.util.cache_manager import update_usage
+import os, logging
 import boto3
-import logging
+from botocore.config import Config
+from botocore.exceptions import BotoCoreError, ClientError
+from app.util.cache_manager import update_usage
+
+S3_CFG = Config(
+    region_name="ap-northeast-2",   # 실제 리전으로
+    connect_timeout=5,
+    read_timeout=15,
+    retries={"max_attempts": 3, "mode": "standard"},
+)
 
 def ensure_testcases_cached(problem_id: int, base_path: str, bucket_name: str):
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
 
-    """
-    문제 ID에 해당하는 테스트케이스 디렉토리가 base_path에 없다면 S3에서 가져온다.
-    """
     local_problem_dir = Path(base_path) / f"prob_{problem_id:05d}"
-    logger.info(f"초기 local_problem_dir ={local_problem_dir}")
-    
-    # 1. 캐시 존재 및 비어 있지 않으면 바로 사용
+    logger.info("초기 local_problem_dir = %s", local_problem_dir)
+
     if local_problem_dir.exists() and any(local_problem_dir.iterdir()):
         return local_problem_dir
 
-    # 2. 없으면 디렉토리 생성
     os.makedirs(local_problem_dir, exist_ok=True)
 
-    # 3. S3에서 파일 목록 가져오기 및 다운로드
-    s3_prefix = f"prob_{problem_id:05d}/"
-    s3 = boto3.client("s3")
-    paginator = s3.get_paginator("list_objects_v2")
-    pages = paginator.paginate(Bucket=bucket_name, Prefix=s3_prefix)
+    prefix = f"prob_{problem_id:05d}/"
+    s3 = boto3.client("s3", config=S3_CFG)
 
-    for page in pages:
-        for obj in page.get("Contents", []):
-            key = obj["Key"]
-            filename = key.split("/")[-1]
-            local_path = local_problem_dir / filename
-            s3.download_file(bucket_name, key, str(local_path))
+    try:
+        paginator = s3.get_paginator("list_objects_v2")
+        pages = paginator.paginate(Bucket=bucket_name, Prefix=prefix)
 
-    logger.info(f"최종 local_problem_dir ={local_problem_dir}")
+        found = False
+        for page in pages:
+            contents = page.get("Contents", [])
+            logger.info("S3 page keys=%d", len(contents))
+            for obj in contents:
+                key = obj["Key"]
+                size = obj.get("Size", -1)
+
+                # 1) 디렉터리 플레이스홀더/빈 파일명 스킵
+                if key.endswith("/"):
+                    logger.info("skip dir placeholder: %s", key)
+                    continue
+                filename = key.rsplit("/", 1)[-1]
+                if not filename:
+                    logger.info("skip empty filename key: %s", key)
+                    continue
+
+                # 2) 다운로드
+                dst = local_problem_dir / filename
+                logger.info("download: %s (size=%s) -> %s", key, size, dst)
+                s3.download_file(bucket_name, key, str(dst))
+                found = True
+
+        if not found:
+            logger.warning("No files under prefix=%s", prefix)
+
+    except (ClientError, BotoCoreError) as e:
+        logger.exception("S3 다운로드 실패: %s", e)
+        raise
+
+    logger.info("최종 local_problem_dir = %s", local_problem_dir)
     update_usage(problem_id)
     return local_problem_dir
